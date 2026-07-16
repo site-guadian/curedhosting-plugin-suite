@@ -28,6 +28,15 @@ class CHPS_Settings {
             'dashicons-admin-plugins',
             81
         );
+
+        add_submenu_page(
+            'chps-settings',
+            'Modules',
+            'Modules',
+            'manage_options',
+            'chps-modules',
+            array($this, 'render_modules_page')
+        );
     }
 
     public function register_settings() {
@@ -122,7 +131,60 @@ class CHPS_Settings {
                     <button type="submit" class="button button-primary">Issue License</button>
                 </form>
             </div>
+
+            <div class="card" style="max-width:900px;padding:16px;border:1px solid #ddd;background:#fff;margin-top:20px;">
+                <h2>Installed Modules</h2>
+                <?php $this->render_modules_list(); ?>
+            </div>
         </div>
         <?php
+    }
+
+    public function render_modules_page() {
+        ?>
+        <div class="wrap">
+            <h1>CuredHosting Suite Modules</h1>
+            <p>These modules are registered with the CuredHosting Plugin Suite and loaded from the suite's modules folder.</p>
+            <div class="card" style="max-width:900px;padding:16px;border:1px solid #ddd;background:#fff;margin-top:20px;">
+                <?php $this->render_modules_list(); ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    private function render_modules_list() {
+        $modules = chps_get_registered_modules();
+        if (empty($modules)) {
+            echo '<p>No modules registered yet.</p>';
+            return;
+        }
+
+        echo '<table class="widefat fixed striped">';
+        echo '<thead><tr><th>Module</th><th>Slug</th><th>Version</th><th>Admin Page</th></tr></thead>';
+        echo '<tbody>';
+
+        foreach ($modules as $module) {
+            $name = esc_html($module['name'] ?? 'Unnamed');
+            $slug = esc_html($module['slug'] ?? 'unknown');
+            $version = esc_html($module['version'] ?? '1.0.0');
+            $admin_slug = isset($module['admin_slug']) ? esc_attr($module['admin_slug']) : '';
+            $admin_link = $admin_slug ? admin_url('admin.php?page=' . rawurlencode($admin_slug)) : '';
+
+            echo '<tr>';
+            echo '<td>' . $name . '</td>';
+            echo '<td>' . $slug . '</td>';
+            echo '<td>' . $version . '</td>';
+            echo '<td>';
+            if ($admin_link) {
+                echo '<a href="' . esc_url($admin_link) . '">View</a>';
+            } else {
+                echo 'None';
+            }
+            echo '</td>';
+            echo '</tr>';
+        }
+
+        echo '</tbody>';
+        echo '</table>';
     }
 }

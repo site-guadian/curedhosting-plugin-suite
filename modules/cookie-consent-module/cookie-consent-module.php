@@ -10,6 +10,15 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (function_exists('chps_register_module')) {
+    chps_register_module([
+        'name' => 'Cookie Consent',
+        'slug' => 'cookie-consent',
+        'version' => '1.0.0',
+        'admin_slug' => 'chps-cookie-consent'
+    ]);
+}
+
 if (!class_exists('CH_Cookie_Consent')) {
     class CH_Cookie_Consent {
         private $option_prefix = 'chcc_';
@@ -106,7 +115,7 @@ if (!class_exists('CH_Cookie_Consent')) {
             update_option($this->option_prefix . 'accept_label', sanitize_text_field(wp_unslash($_POST['chcc_accept_label'] ?? '')));
             update_option($this->option_prefix . 'decline_label', sanitize_text_field(wp_unslash($_POST['chcc_decline_label'] ?? '')));
             update_option($this->option_prefix . 'tier', sanitize_text_field(wp_unslash($_POST['chcc_tier'] ?? 'free')));
-            wp_redirect(admin_url('admin.php?page=ch-cookie-consent&updated=1'));
+            wp_redirect(admin_url('admin.php?page=chps-cookie-consent&updated=1'));
             exit;
         }
 
