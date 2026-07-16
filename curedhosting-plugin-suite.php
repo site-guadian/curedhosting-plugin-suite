@@ -22,6 +22,10 @@ require_once CHPS_PLUGIN_DIR . 'includes/class-chps-admin.php';
 require_once CHPS_PLUGIN_DIR . 'includes/class-chps-stripe.php';
 require_once CHPS_PLUGIN_DIR . 'includes/class-chps-setup-wizard.php';
 
+foreach (glob(CHPS_PLUGIN_DIR . 'modules/*/*.php') as $module_file) {
+    require_once $module_file;
+}
+
 add_action('plugins_loaded', function () {
     CHPS_Settings::instance();
     CHPS_License::instance();
