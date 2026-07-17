@@ -106,14 +106,14 @@ class CHPS_Settings {
                     <label for="chps-license-key">License key</label>
                     <input type="text" id="chps-license-key" name="chps_license_key" value="<?php echo esc_attr($license_key); ?>" class="regular-text" />
                     <input type="email" name="chps_customer_email" placeholder="customer@example.com" class="regular-text" />
-                    <button type="submit" class="button button-primary">Activate</button>
+                    <button type="submit" class="button button-primary" onclick="return confirm('Activating a license will change your current tier and settings. Be sure you have saved any current configuration before continuing.');">Activate</button>
                 </form>
 
                 <?php if ($license_status === 'active') : ?>
                     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline-block;">
                         <input type="hidden" name="action" value="chps_deactivate_license" />
                         <?php wp_nonce_field('chps_deactivate_license'); ?>
-                        <button type="submit" class="button">Deactivate</button>
+                        <button type="submit" class="button" onclick="return confirm('Deactivating the license will switch the site back to the free tier. Make sure you have saved your current settings before continuing.');">Deactivate</button>
                     </form>
                 <?php endif; ?>
             </div>
@@ -143,7 +143,7 @@ class CHPS_Settings {
                             <td><label><input type="checkbox" name="chps_activate_immediately" value="1" /> Turn it on for this site right away</label></td>
                         </tr>
                     </table>
-                    <button type="submit" class="button button-primary">Issue License</button>
+                    <button type="submit" class="button button-primary" onclick="return confirm('Issuing a license can change a customer site tier and configuration. Please confirm you have saved your current settings before proceeding.');">Issue License</button>
                 </form>
             </div>
 
@@ -234,7 +234,7 @@ class CHPS_Settings {
             wp_nonce_field('chps_toggle_module_' . $slug);
             echo '<input type="hidden" name="action" value="chps_toggle_module" />';
             echo '<input type="hidden" name="module_slug" value="' . esc_attr($slug) . '" />';
-            echo '<button type="submit" class="button">' . ($enabled ? 'Disable' : 'Enable') . '</button>';
+            echo '<button type="submit" class="button" onclick="return confirm(\'Changing module status can alter your current configuration. Please make sure you have saved your settings before continuing.\')">' . ($enabled ? 'Disable' : 'Enable') . '</button>';
             echo '</form>';
             echo '</td>';
             echo '</tr>';
