@@ -92,7 +92,8 @@ class CHPS_Settings {
                         </td>
                     </tr>
                 </table>
-                <?php submit_button('Save Tier Settings'); ?>
+                <p><strong>Tip:</strong> Click Save All Settings to persist your current license, tier, and debug mode before making any further changes.</p>
+                <?php submit_button('Save All Settings', 'primary', 'submit', false, array('onclick' => "return confirm('Saving changes can overwrite your current configuration. Are you sure you want to continue? Make sure you have saved any important settings before proceeding.');")); ?>
             </form>
 
             <div class="card" style="max-width:900px;padding:16px;border:1px solid #ddd;background:#fff;margin-top:20px;">
