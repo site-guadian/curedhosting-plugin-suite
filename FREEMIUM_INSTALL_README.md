@@ -10,6 +10,8 @@ This file explains how to install the freemium package, enable modules, and inst
 - From WordPress admin: Plugins → Add New → Upload Plugin → choose `curedhosting-plugin-suite-freemium-<version>.zip` and click Install Now.
 - After install: Plugins → Activate the `CuredHosting Plugin Suite` plugin.
 
+> **Warning:** Before making any changes or installing new modules, save your current plugin configuration and license settings. This helps avoid losing custom settings if you switch packages or update modules.
+
 3) Configure the plugin
 - Visit the plugin settings page (left admin menu `CuredHosting` or similar) to run the setup wizard and configure license and Stripe settings.
 - Enable/disable individual modules from the plugin settings. Modules map to folders under `modules/`.
