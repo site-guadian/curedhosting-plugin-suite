@@ -27,3 +27,46 @@ Development notes
 Suggested repository topics: WordPress, plugin, PHP, Stripe, licensing, hosting, onboarding, admin
 
 See also: `othwer/README.html` for historical notes and module-specific docs.
+
+## Standalone Key Maker
+
+A standalone key maker app lives in `key-maker/`.
+It can generate license keys outside WordPress using a simple CLI:
+
+```bash
+php key-maker/generate-key.php --email="customer@example.com" --tier=pro
+```
+
+Use `--secret` to provide an optional shared secret for reproducible key generation.
+
+## Plugin Suite File Structure
+
+```
+curedhosting-plugin-suite/
+├── .git/
+├── .gitignore
+├── README.md
+├── curedhosting-plugin-suite.php
+├── includes/
+│   ├── class-chps-admin.php
+│   ├── class-chps-license.php
+│   ├── class-chps-settings.php
+│   ├── class-chps-setup-wizard.php
+│   └── class-chps-stripe.php
+└── modules/
+    ├── cookie-consent-module/
+    │   ├── assets/
+    │   │   └── cookie-consent.js
+    │   └── cookie-consent-module.php
+    ├── link-audit-module/
+    │   └── link-audit-module.php
+    ├── stripe-payment-module/
+    │   ├── includes/
+    │   │   └── class-stripe-payment-module.php
+    │   ├── README.txt
+    │   └── stripe-payment-module.php
+    ├── wp-server-guardian/
+    │   └── wp-server-guardian.php
+    └── wp-speed-autopilot/
+        └── wp-speed-autopilot.php
+```

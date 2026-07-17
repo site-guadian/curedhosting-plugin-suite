@@ -122,6 +122,11 @@ class CHPS_Stripe {
             return;
         }
 
+        $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
+        if ($page !== 'chps-stripe') {
+            return;
+        }
+
         if (isset($_GET['chps_stripe']) && sanitize_text_field(wp_unslash($_GET['chps_stripe'])) === 'success') {
             echo '<div class="notice notice-success"><p>Checkout completed. The suite will activate your requested tier automatically once Stripe confirms the purchase.</p></div>';
             return;
@@ -225,6 +230,10 @@ class CHPS_Stripe {
             return false;
         }
 
+        if (abs(time() - intval($timestamp)) > 300) {
+            return false;
+        }
+
         $expected = hash_hmac('sha256', $timestamp . '.' . $payload, $secret);
         return hash_equals($expected, $signed);
     }
@@ -248,6 +257,7 @@ class CHPS_Stripe {
                 'cancel_url' => $cancel_url . '?chps_stripe=cancel',
                 'customer_email' => $admin_email,
                 'metadata[tier]' => $tier,
+                'subscription_data[metadata][tier]' => $tier,
                 'allow_promotion_codes' => 'true',
             ),
             'timeout' => 30,
@@ -266,14 +276,9 @@ class CHPS_Stripe {
     private function process_event($event) {
         switch ($event['type']) {
             case 'checkout.session.completed':
-                $object = $event['data']['object'] ?? array();
-                $tier = $object['metadata']['tier'] ?? 'pro';
-                $this->activate_license($tier, 'active', $object['id'] ?? '');
-                break;
-
             case 'invoice.paid':
                 $object = $event['data']['object'] ?? array();
-                $tier = $object['metadata']['tier'] ?? 'pro';
+                $tier = $this->get_tier_from_event($event);
                 $this->activate_license($tier, 'active', $object['id'] ?? '');
                 break;
 
@@ -282,7 +287,7 @@ class CHPS_Stripe {
                 $object = $event['data']['object'] ?? array();
                 $status = $object['status'] ?? 'inactive';
                 if (in_array($status, array('active', 'trialing'), true)) {
-                    $tier = $object['metadata']['tier'] ?? 'pro';
+                    $tier = $this->get_tier_from_event($event);
                     $this->activate_license($tier, $status, $object['id'] ?? '');
                 } else {
                     $this->deactivate_license($object['id'] ?? '');
@@ -304,6 +309,57 @@ class CHPS_Stripe {
 
         update_option('chps_stripe_status', sanitize_text_field($status));
         update_option('chps_stripe_last_event', sanitize_text_field($event_id));
+    }
+
+    private function get_tier_from_event($event) {
+        $object = $event['data']['object'] ?? array();
+
+        if (!empty($object['metadata']['tier'])) {
+            $tier = sanitize_text_field($object['metadata']['tier']);
+            if (in_array($tier, array('pro', 'corporate'), true)) {
+                return $tier;
+            }
+        }
+
+        if (!empty($object['subscription']) && is_array($object['subscription']) && !empty($object['subscription']['metadata']['tier'])) {
+            $tier = sanitize_text_field($object['subscription']['metadata']['tier']);
+            if (in_array($tier, array('pro', 'corporate'), true)) {
+                return $tier;
+            }
+        }
+
+        if (!empty($object['lines']['data'][0]['price']['id'])) {
+            return $this->get_tier_from_price_id($object['lines']['data'][0]['price']['id']);
+        }
+
+        if (!empty($object['price']['id'])) {
+            return $this->get_tier_from_price_id($object['price']['id']);
+        }
+
+        if (!empty($event['data']['object']['subscription']) && is_string($event['data']['object']['subscription'])) {
+            return $this->get_tier_from_price_id($event['data']['object']['subscription']);
+        }
+
+        return 'pro';
+    }
+
+    private function get_tier_from_price_id($price_id) {
+        $pro_price_id = get_option('chps_stripe_pro_price_id', '');
+        $corporate_price_id = get_option('chps_stripe_corporate_price_id', '');
+
+        if ($price_id === $corporate_price_id) {
+            return 'corporate';
+        }
+
+        if ($price_id === $pro_price_id) {
+            return 'pro';
+        }
+
+        if (strpos($price_id, 'corp') !== false || strpos($price_id, 'CORP') !== false) {
+            return 'corporate';
+        }
+
+        return 'pro';
     }
 
     private function deactivate_license($event_id) {

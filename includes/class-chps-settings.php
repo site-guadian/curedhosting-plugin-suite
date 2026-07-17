@@ -14,8 +14,11 @@ class CHPS_Settings {
     }
 
     private function __construct() {
-        add_action('admin_menu', array($this, 'register_menu'));
+        add_action('admin_menu', array($this, 'register_menu'), 1);  // Run VERY early so modules can register submenus
         add_action('admin_init', array($this, 'register_settings'));
+        add_action('admin_post_chps_toggle_module', array($this, 'handle_toggle_module'));
+        add_action('admin_menu', array($this, 'register_license_submenu'), 99);
+        // License activation is handled by CHPS_License to avoid duplicate admin_post callbacks.
     }
 
     public function register_menu() {
@@ -152,6 +155,36 @@ class CHPS_Settings {
         <?php
     }
 
+    public function handle_toggle_module() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        $slug = sanitize_key(wp_unslash($_POST['module_slug'] ?? ''));
+        check_admin_referer('chps_toggle_module_' . $slug);
+
+        if (empty($slug)) {
+            wp_safe_redirect(admin_url('admin.php?page=chps-modules'));
+            exit;
+        }
+
+        $current = get_option('chps_module_status_' . $slug, 'active');
+        $new_status = $current === 'active' ? 'disabled' : 'active';
+        update_option('chps_module_status_' . $slug, $new_status);
+
+        wp_safe_redirect(admin_url('admin.php?page=chps-modules&module_status=' . rawurlencode($new_status) . '&module=' . rawurlencode($slug)));
+        exit;
+    }
+
+    private function get_module_status($module) {
+        $slug = $module['slug'] ?? '';
+        if (empty($slug)) {
+            return 'unknown';
+        }
+
+        return get_option('chps_module_status_' . sanitize_key($slug), $module['status'] ?? 'active');
+    }
+
     private function render_modules_list() {
         $modules = chps_get_registered_modules();
         if (empty($modules)) {
@@ -160,31 +193,199 @@ class CHPS_Settings {
         }
 
         echo '<table class="widefat fixed striped">';
-        echo '<thead><tr><th>Module</th><th>Slug</th><th>Version</th><th>Admin Page</th></tr></thead>';
+        echo '<thead><tr><th>Module</th><th>Slug</th><th>Version</th><th>Status</th><th>Admin Page</th><th>Actions</th></tr></thead>';
         echo '<tbody>';
 
         foreach ($modules as $module) {
             $name = esc_html($module['name'] ?? 'Unnamed');
             $slug = esc_html($module['slug'] ?? 'unknown');
-            $version = esc_html($module['version'] ?? '1.0.0');
+            $version = esc_html($module['version'] ?? '1.0.1');
+            $status = esc_html($this->get_module_status($module));
             $admin_slug = isset($module['admin_slug']) ? esc_attr($module['admin_slug']) : '';
             $admin_link = $admin_slug ? admin_url('admin.php?page=' . rawurlencode($admin_slug)) : '';
+            $enabled = $status === 'active';
 
             echo '<tr>';
             echo '<td>' . $name . '</td>';
             echo '<td>' . $slug . '</td>';
             echo '<td>' . $version . '</td>';
+            echo '<td>' . ucfirst($status) . '</td>';
             echo '<td>';
-            if ($admin_link) {
+            if ($admin_link && $enabled) {
                 echo '<a href="' . esc_url($admin_link) . '">View</a>';
             } else {
                 echo 'None';
             }
+            echo '</td>';
+            echo '<td>';
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+            wp_nonce_field('chps_toggle_module_' . $slug);
+            echo '<input type="hidden" name="action" value="chps_toggle_module" />';
+            echo '<input type="hidden" name="module_slug" value="' . esc_attr($slug) . '" />';
+            echo '<button type="submit" class="button">' . ($enabled ? 'Disable' : 'Enable') . '</button>';
+            echo '</form>';
             echo '</td>';
             echo '</tr>';
         }
 
         echo '</tbody>';
         echo '</table>';
+    }
+
+    public function register_license_submenu() {
+        add_submenu_page(
+            'options-general.php',
+            'CuredHosting License',
+            'CuredHosting License',
+            'manage_options',
+            'chps-license-key',
+            array($this, 'render_license_key_page')
+        );
+    }
+
+    public function render_license_key_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        $license_key = get_option('chps_license_key', '');
+        $tier = get_option('chps_tier', 'free');
+        $license_status = get_option('chps_license_status', 'inactive');
+        ?>
+        <div class="wrap" style="max-width:600px;margin-top:20px;">
+            <h1>🔑 CuredHosting License Key</h1>
+            <p>Enter or manage your license key below.</p>
+
+            <div class="card" style="padding:20px;border:1px solid #ddd;background:#fff;margin:20px 0;">
+                <h2 style="margin-top:0;">License Status</h2>
+                <table class="form-table" style="margin:0;">
+                    <tr>
+                        <th scope="row">Current Status:</th>
+                        <td>
+                            <strong style="color: <?php echo $license_status === 'active' ? '#008000' : '#d32f2f'; ?>;">
+                                <?php echo esc_html(ucfirst($license_status)); ?>
+                            </strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Current Tier:</th>
+                        <td><strong><?php echo esc_html(ucfirst($tier)); ?></strong></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card" style="padding:20px;border:1px solid #ddd;background:#fff;margin:20px 0;">
+                <h2 style="margin-top:0;">Enter License Key</h2>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <input type="hidden" name="action" value="chps_activate_license" />
+                    <?php wp_nonce_field('chps_activate_license'); ?>
+                    
+                    <table class="form-table" style="margin:0;">
+                        <tr>
+                            <th scope="row">
+                                <label for="chps-license-key">License Key:</label>
+                            </th>
+                            <td>
+                                <input 
+                                    type="text" 
+                                    id="chps-license-key" 
+                                    name="chps_license_key" 
+                                    value="<?php echo esc_attr($license_key); ?>" 
+                                    class="regular-text" 
+                                    placeholder="e.g., CHPS-xxxx-xxxx-xxxx"
+                                    required
+                                />
+                                <p class="description">Paste your license key here to activate your tier.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="chps-tier">Tier to Unlock:</label>
+                            </th>
+                            <td>
+                                <select id="chps-tier" name="chps_license_tier">
+                                    <option value="pro">Pro ($49/mo)</option>
+                                    <option value="corporate">Corporate ($149/mo)</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <p>
+                        <button type="submit" class="button button-primary button-large">Activate License</button>
+                    </p>
+                </form>
+            </div>
+
+            <div class="card" style="padding:20px;border:1px solid #ccc;background:#f9f9f9;">
+                <h3>Need a license?</h3>
+                <p>Contact: <strong>siteguardian@plaguedr.online</strong></p>
+                <p style="font-size:12px;color:#666;">Pro plan: $49/mo • Corporate plan: $149/mo</p>
+            </div>
+        </div>
+        <?php
+    }
+
+    public function handle_activate_license() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        check_admin_referer('chps_activate_license');
+
+        $license_key = sanitize_text_field(wp_unslash($_POST['chps_license_key'] ?? ''));
+        $tier = sanitize_text_field(wp_unslash($_POST['chps_license_tier'] ?? 'pro'));
+
+        if (empty($license_key)) {
+            wp_safe_redirect(admin_url('options-general.php?page=chps-license-key&error=empty_key'));
+            exit;
+        }
+
+        update_option('chps_license_key', $license_key);
+        update_option('chps_tier', $tier);
+        update_option('chps_license_status', 'active');
+
+        wp_safe_redirect(admin_url('options-general.php?page=chps-license-key&success=1'));
+        exit;
+    }
+
+    public function reduce_notices() {
+        // Only show notices on CuredHosting pages
+        if (!isset($_GET['page']) || strpos($_GET['page'], 'chps') === false) {
+            // Suppress plugin notices on non-CuredHosting pages to reduce clutter
+            remove_action('admin_notices', array(CHPS_Admin::instance(), 'show_tier_notice'));
+        }
+    }
+
+    public function hide_notices_css() {
+        $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
+        if (!empty($page) && (strpos($page, 'chps') === 0 || $page === 'chps-license-key')) {
+            echo '<style>
+                .notice { display: none !important; }
+                .update-nag { display: none !important; }
+            </style>';
+        }
+    }
+
+    public function ensure_module_pages_accessible() {
+        global $pagenow;
+        
+        // If we're on admin.php with a CuredHosting module page, add a top-level menu so the page is properly registered
+        if ($pagenow === 'admin.php' && isset($_GET['page'])) {
+            $page = sanitize_text_field(wp_unslash($_GET['page']));
+            // Check if it's a CHPS module page
+            if (strpos($page, 'chps-') === 0) {
+                // Register as a temporary top-level menu so WordPress recognizes it as a valid page
+                add_menu_page(
+                    'CHPS Module',
+                    'CHPS Module',
+                    'manage_options',
+                    $page,
+                    '__return_null',
+                    'dashicons-admin-generic',
+                    999
+                );
+            }
+        }
     }
 }

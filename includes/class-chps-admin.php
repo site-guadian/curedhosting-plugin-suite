@@ -19,10 +19,8 @@ class CHPS_Admin {
     }
 
     public function show_tier_notice() {
-        $tier = get_option('chps_tier', 'free');
-        if ($tier === 'free') {
-            echo '<div class="notice notice-info"><p>Upgrade to Pro or Corporate to unlock advanced features and support more workloads. For sales or technical support, contact siteguardian@plaguedr.online.</p></div>';
-        }
+        // Don't show tier notice on any admin page - it's too noisy
+        return;
     }
 
     public function register_feature_pages() {

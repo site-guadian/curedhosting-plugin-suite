@@ -24,3 +24,6 @@ Thumbs.db
 # Build
 dist/
 build/
+
+# Build artifacts
+curedhosting-plugin-suite-*.zip

@@ -50,6 +50,12 @@ class CHPS_License {
             return;
         }
 
+        // Only show on CuredHosting pages or settings pages
+        $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
+        if (empty($page) || (strpos($page, 'chps') === false && strpos($page, 'options-general') === false)) {
+            return;
+        }
+
         $notice = isset($_GET['chps_notice']) ? sanitize_text_field(wp_unslash($_GET['chps_notice'])) : '';
 
         if ($notice === 'activated') {
@@ -345,7 +351,7 @@ class CHPS_License {
             'secret' => $secret,
             'license_key' => $license_key,
             'requested_tier' => $requested_tier,
-            'customer_email' => get_option('chps_last_issued_email', ''),
+            'customer_email' => $email,
         );
 
         $response = wp_remote_post($endpoint, array(

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CuredHosting Cookie Consent
  * Description: Lightweight cookie consent banner for WordPress sites with free, pro, and corporate tier support.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: CuredHosting
  */
 
@@ -14,8 +14,9 @@ if (function_exists('chps_register_module')) {
     chps_register_module([
         'name' => 'Cookie Consent',
         'slug' => 'cookie-consent',
-        'version' => '1.0.0',
-        'admin_slug' => 'chps-cookie-consent'
+        'version' => '1.0.1',
+        'admin_slug' => 'chps-cookie-consent',
+        'status' => 'active'
     ]);
 }
 
@@ -28,7 +29,9 @@ if (!class_exists('CH_Cookie_Consent')) {
             add_action('wp_footer', [$this, 'render_banner']);
             add_action('admin_menu', [$this, 'add_admin_menu']);
             add_action('admin_init', [$this, 'register_settings']);
-            add_action('admin_notices', [$this, 'show_free_tier_promo']);
+            if (method_exists($this, 'show_free_tier_promo')) {
+                add_action('admin_notices', [$this, 'show_free_tier_promo']);
+            }
             add_action('admin_post_chcc_save', [$this, 'handle_save']);
             add_action('init', [$this, 'handle_consent_action']);
         }
@@ -36,7 +39,7 @@ if (!class_exists('CH_Cookie_Consent')) {
         public function enqueue_frontend_assets() {
             wp_enqueue_style('chcc-style', false);
             wp_add_inline_style('chcc-style', $this->get_css());
-            wp_enqueue_script('chcc-script', plugin_dir_url(__FILE__) . 'assets/cookie-consent.js', [], '1.0.0', true);
+            wp_enqueue_script('chcc-script', plugin_dir_url(__FILE__) . 'assets/cookie-consent.js', [], '1.0.1', true);
             wp_localize_script('chcc-script', 'chccData', [
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'consentKey' => $this->option_prefix . 'consent',
@@ -62,6 +65,11 @@ if (!class_exists('CH_Cookie_Consent')) {
             register_setting('chcc_settings_group', $this->option_prefix . 'accept_label');
             register_setting('chcc_settings_group', $this->option_prefix . 'decline_label');
             register_setting('chcc_settings_group', $this->option_prefix . 'tier');
+        }
+
+        public function show_free_tier_promo() {
+            // Suppress - too noisy
+            return;
         }
 
         public function render_admin_page() {
