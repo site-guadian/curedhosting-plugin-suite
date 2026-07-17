@@ -33,3 +33,15 @@ This file explains how to install the freemium package, enable modules, and inst
 - Send support requests to support@yourdomain.example (replace with your contact email).
 
 Thanks — enjoy the freemium suite. If you'd like, I can also generate a separate `paid-only` zip with all paid modules for distribution to customers.
+
+---
+
+Security & Upgrade Notes (important)
+- **Secrets handling:** As of version 1.0.2 the plugin no longer echoes secret keys back into admin forms. Secret values are preserved when left empty on save and sensitive options are migrated to `autoload = 'no'` to avoid loading secrets on every request.
+- **Constant fallback:** Admins can define `CHPS_STRIPE_SECRET_KEY` and `CHPS_STRIPE_WEBHOOK_SECRET` (in `wp-config.php`) to keep secrets out of the DB.
+- **Logging:** Webhook payloads, signatures, and remote response bodies are no longer written to the error log to avoid accidental secrets leakage.
+
+Please read the release notes and upgrade guide for full details and verification steps:
+- Release notes: RELEASE_NOTES-1.0.2.md
+- Admin upgrade & secrets guide: UPGRADE_GUIDE.md
+- Admin verification checklist: ADMIN_VERIFICATION_CHECKLIST.md

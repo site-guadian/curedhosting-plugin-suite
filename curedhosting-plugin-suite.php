@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CuredHosting Plugin Suite
  * Description: A freemium WordPress plugin suite with Free, Pro, and Corporate tiers for hosting-focused utilities.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: CuredHosting
  */
 
@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('CHPS_VERSION', '1.0.1');
+define('CHPS_VERSION', '1.0.2');
 define('CHPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CHPS_PLUGIN_URL', plugin_dir_url(__FILE__));
 

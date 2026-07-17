@@ -84,6 +84,7 @@ A PowerShell build script `build.ps1` is provided at the repository root to prod
 
 - `curedhosting-plugin-suite-full-<version>.zip`
 - `curedhosting-plugin-suite-freemium-<version>.zip`
+- `curedhosting-plugin-suite-sales-<version>.html`
 
 Run the build locally from the repository root:
 
@@ -91,6 +92,12 @@ Run the build locally from the repository root:
 Set-Location 'd:\PREMIUM PLUGIN\curedhosting-plugin-suite'
 pwsh -NoProfile -ExecutionPolicy Bypass -File build.ps1
 ```
+
+The build process now generates:
+
+- `sales.html` inside every zip with the current version and release notes
+- `release-notes-<version>.html` inside every zip for distributors and marketers
+- `CHANGELOG.md` in every zip so every release contains complete history
 
 The freemium zip includes the base free modules at top-level. Specifically, `modules/wp-server-guardian` and `modules/wp-speed-autopilot` are part of the free/freemium offering and will be present in the freemium archive's `modules/` folder.
 

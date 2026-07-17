@@ -93,7 +93,7 @@ class CHPS_License {
         }
 
         $shared_secret = sanitize_text_field($body['secret'] ?? '');
-        $expected_secret = get_option('chps_license_secret', '');
+        $expected_secret = defined('CHPS_LICENSE_SECRET') ? CHPS_LICENSE_SECRET : get_option('chps_license_secret', '');
         if ($shared_secret === '' || !hash_equals($expected_secret, $shared_secret)) {
             return new WP_REST_Response(array('valid' => false, 'error' => 'invalid_secret'), 403);
         }
@@ -342,7 +342,7 @@ class CHPS_License {
 
     private function validate_against_remote_endpoint($license_key, $requested_tier) {
         $endpoint = get_option('chps_license_endpoint', '');
-        $secret = get_option('chps_license_secret', '');
+        $secret = defined('CHPS_LICENSE_SECRET') ? CHPS_LICENSE_SECRET : get_option('chps_license_secret', '');
         if ($endpoint === '' || $secret === '') {
             return array('valid' => false);
         }
@@ -367,14 +367,14 @@ class CHPS_License {
 
         $code = wp_remote_retrieve_response_code($response);
         if ($code >= 400) {
-            chps_log_error('License remote validation returned HTTP error', array('endpoint' => $endpoint, 'code' => $code, 'body' => substr(wp_remote_retrieve_body($response), 0, 1000)));
+            chps_log_error('License remote validation returned HTTP error', array('endpoint' => $endpoint, 'code' => $code));
             return array('valid' => false);
         }
 
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
         if (!is_array($data) || empty($data['valid'])) {
-            chps_log_error('License remote validation returned invalid payload', array('endpoint' => $endpoint, 'body' => substr($body, 0, 1000)));
+            chps_log_error('License remote validation returned invalid payload', array('endpoint' => $endpoint));
             return array('valid' => false);
         }
 

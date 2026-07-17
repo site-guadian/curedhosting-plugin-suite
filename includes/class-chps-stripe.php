@@ -13,6 +13,23 @@ class CHPS_Stripe {
         return self::$instance;
     }
 
+    public function sanitize_chps_stripe_secret_key($value) {
+        $val = sanitize_text_field(wp_unslash($value));
+        if (trim($val) === '') {
+            // preserve existing secret if user left the field empty
+            return get_option('chps_stripe_secret_key', '');
+        }
+        return $val;
+    }
+
+    public function sanitize_chps_stripe_webhook_secret($value) {
+        $val = sanitize_text_field(wp_unslash($value));
+        if (trim($val) === '') {
+            return get_option('chps_stripe_webhook_secret', '');
+        }
+        return $val;
+    }
+
     private function __construct() {
         add_action('admin_menu', array($this, 'register_menu'));
         add_action('admin_init', array($this, 'register_settings'));
@@ -34,9 +51,9 @@ class CHPS_Stripe {
 
     public function register_settings() {
         register_setting('chps_stripe_group', 'chps_stripe_enabled');
-        register_setting('chps_stripe_group', 'chps_stripe_secret_key');
+        register_setting('chps_stripe_group', 'chps_stripe_secret_key', array($this, 'sanitize_chps_stripe_secret_key'));
         register_setting('chps_stripe_group', 'chps_stripe_publishable_key');
-        register_setting('chps_stripe_group', 'chps_stripe_webhook_secret');
+        register_setting('chps_stripe_group', 'chps_stripe_webhook_secret', array($this, 'sanitize_chps_stripe_webhook_secret'));
         register_setting('chps_stripe_group', 'chps_stripe_pro_price_id');
         register_setting('chps_stripe_group', 'chps_stripe_corporate_price_id');
         register_setting('chps_stripe_group', 'chps_stripe_success_url');
@@ -45,9 +62,11 @@ class CHPS_Stripe {
 
     public function render_page() {
         $enabled = get_option('chps_stripe_enabled', 0);
-        $secret_key = get_option('chps_stripe_secret_key', '');
+        // Do not echo secrets back into the form. Show empty inputs and only update when a non-empty value is submitted.
+        $secret_key = '';
         $publishable_key = get_option('chps_stripe_publishable_key', '');
-        $webhook_secret = get_option('chps_stripe_webhook_secret', '');
+        $webhook_secret = '';
+        $has_secret = !empty(get_option('chps_stripe_secret_key', ''));
         $pro_price_id = get_option('chps_stripe_pro_price_id', '');
         $corporate_price_id = get_option('chps_stripe_corporate_price_id', '');
         $success_url = get_option('chps_stripe_success_url', home_url('/'));
@@ -67,7 +86,12 @@ class CHPS_Stripe {
                     </tr>
                     <tr>
                         <th scope="row">Secret Key</th>
-                        <td><input type="password" name="chps_stripe_secret_key" value="<?php echo esc_attr($secret_key); ?>" class="regular-text" /></td>
+                        <td>
+                            <input type="password" name="chps_stripe_secret_key" value="" class="regular-text" placeholder="Leave empty to keep existing" />
+                            <?php if ($has_secret) : ?>
+                                <p class="description">A secret key is saved (hidden). Leave blank to keep.</p>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row">Publishable Key</th>
@@ -75,7 +99,12 @@ class CHPS_Stripe {
                     </tr>
                     <tr>
                         <th scope="row">Webhook Secret</th>
-                        <td><input type="password" name="chps_stripe_webhook_secret" value="<?php echo esc_attr($webhook_secret); ?>" class="regular-text" /></td>
+                        <td>
+                            <input type="password" name="chps_stripe_webhook_secret" value="" class="regular-text" placeholder="Leave empty to keep existing" />
+                            <?php if (!empty(get_option('chps_stripe_webhook_secret', ''))) : ?>
+                                <p class="description">A webhook secret is saved (hidden). Leave blank to keep.</p>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row">Pro Price ID</th>
@@ -189,21 +218,21 @@ class CHPS_Stripe {
     public function handle_webhook($request) {
         $payload = $request->get_body();
         $signature = $request->get_header('stripe-signature');
-        $webhook_secret = get_option('chps_stripe_webhook_secret', '');
+        $webhook_secret = defined('CHPS_STRIPE_WEBHOOK_SECRET') ? CHPS_STRIPE_WEBHOOK_SECRET : get_option('chps_stripe_webhook_secret', '');
 
         if (empty($webhook_secret) || empty($signature)) {
-            chps_log_error('Stripe webhook missing configuration or signature', array('webhook_secret' => empty($webhook_secret), 'signature_present' => !empty($signature)));
+            chps_log_error('Stripe webhook missing configuration or signature', array('webhook_secret_present' => !empty($webhook_secret), 'signature_present' => !empty($signature)));
             return new WP_REST_Response(array('error' => 'Missing webhook configuration'), 400);
         }
 
         if (!$this->verify_signature($payload, $signature, $webhook_secret)) {
-            chps_log_error('Stripe webhook signature verification failed', array('signature' => $signature, 'payload_snippet' => substr($payload, 0, 400)));
+            chps_log_error('Stripe webhook signature verification failed', array('signature_present' => !empty($signature)));
             return new WP_REST_Response(array('error' => 'Invalid signature'), 401);
         }
 
         $event = json_decode($payload, true);
         if (!is_array($event) || empty($event['type'])) {
-            chps_log_error('Stripe webhook payload invalid JSON or missing type', array('payload_snippet' => substr($payload, 0, 400)));
+            chps_log_error('Stripe webhook payload invalid JSON or missing type', array());
             return new WP_REST_Response(array('error' => 'Invalid payload'), 400);
         }
 
@@ -242,7 +271,7 @@ class CHPS_Stripe {
     }
 
     private function create_checkout_session($tier, $price_id) {
-        $secret_key = get_option('chps_stripe_secret_key', '');
+        $secret_key = defined('CHPS_STRIPE_SECRET_KEY') ? CHPS_STRIPE_SECRET_KEY : get_option('chps_stripe_secret_key', '');
         $success_url = get_option('chps_stripe_success_url', home_url('/'));
         $cancel_url = get_option('chps_stripe_cancel_url', home_url('/'));
         $admin_email = get_option('admin_email', '');
@@ -275,7 +304,7 @@ class CHPS_Stripe {
         $data = json_decode($body, true);
 
         if (empty($data['url'])) {
-            chps_log_error('Stripe create_checkout_session: missing url in response', array('response_code' => wp_remote_retrieve_response_code($response), 'body' => substr($body, 0, 1000)));
+            chps_log_error('Stripe create_checkout_session: missing url in response', array('response_code' => wp_remote_retrieve_response_code($response)));
             return false;
         }
 

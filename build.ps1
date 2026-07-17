@@ -6,7 +6,7 @@ $versionLine = Select-String -Path 'curedhosting-plugin-suite.php' -Pattern "def
 if ($versionLine) {
     $version = $versionLine.Matches[0].Groups[1].Value
 } else {
-    $version = '1.0.1'
+    $version = '1.0.2'
 }
 
 $fullZip = "curedhosting-plugin-suite-full-$version.zip"
@@ -14,8 +14,95 @@ $freeZip = "curedhosting-plugin-suite-freemium-$version.zip"
 
 Write-Output "Building zips for version $version"
 
+function Convert-MarkdownToHtml {
+    param([string[]]$Lines)
+
+    $html = @()
+    $inList = $false
+
+    foreach ($line in $Lines) {
+        if ($line -match '^\s*$') {
+            if ($inList) { $html += '</ul>'; $inList = $false }
+            continue
+        }
+
+        if ($line -match '^## \[(.+?)\] - (.+)$') {
+            if ($inList) { $html += '</ul>'; $inList = $false }
+            $html += "<h3>Version $($matches[1]) - $($matches[2])</h3>"
+            continue
+        }
+
+        if ($line -match '^# (.+)$') {
+            if ($inList) { $html += '</ul>'; $inList = $false }
+            $html += "<h1>$($matches[1])</h1>"
+            continue
+        }
+
+        if ($line -match '^- (.+)$') {
+            if (-not $inList) { $html += '<ul>'; $inList = $true }
+            $html += "<li>$($matches[1])</li>"
+            continue
+        }
+
+        if ($inList) { $html += '</ul>'; $inList = $false }
+        $html += "<p>$line</p>"
+    }
+
+    if ($inList) { $html += '</ul>' }
+    return $html -join "`n"
+}
+
+function Get-ReleaseNotesHtml {
+    param([string]$ChangelogText, [string]$Version)
+
+    $lines = $ChangelogText -split "\r?\n"
+    $section = @()
+    $record = $false
+
+    foreach ($line in $lines) {
+        if ($line -match '^## \[' + [regex]::Escape($Version) + '\] -') {
+            $record = $true
+            $section += $line
+            continue
+        }
+        if ($record) {
+            if ($line -match '^## \[') { break }
+            $section += $line
+        }
+    }
+
+    if ($section.Count -eq 0) {
+        return '<p>No release notes found for version ' + $Version + '.</p>'
+    }
+
+    return Convert-MarkdownToHtml $section
+}
+
+function Get-ChangelogHtml {
+    param([string]$ChangelogText)
+    $lines = $ChangelogText -split "\r?\n"
+    return Convert-MarkdownToHtml $lines
+}
+
 # Create full zip
 if (Test-Path $fullZip) { Remove-Item $fullZip -Force }
+
+# Generate release notes HTML and sales page for this version
+$releaseNotesHtml = Join-Path $root "release-notes-$version.html"
+$salesHtml = Join-Path $root "sales.html"
+$changelog = Get-Content -Path "CHANGELOG.md" -Raw
+$releaseNotesHtmlContent = Get-ReleaseNotesHtml -ChangelogText $changelog -Version $version
+$changelogHtml = Get-ChangelogHtml -ChangelogText $changelog
+
+$template = Get-Content -Path 'release-notes-template.html' -Raw
+$template = $template -replace '{{VERSION}}', $version
+$template = $template -replace '{{DATE}}', (Get-Date -Format 'yyyy-MM-dd')
+$template = $template -replace '{{RELEASE_NOTES}}', $releaseNotesHtmlContent
+$template = $template -replace '{{CHANGELOG_HTML}}', $changelogHtml
+
+Set-Content -Path $releaseNotesHtml -Value $template -Encoding UTF8
+Set-Content -Path $salesHtml -Value $template -Encoding UTF8
+
 Compress-Archive -Path * -DestinationPath $fullZip -Force
 Write-Output "Created $fullZip"
 

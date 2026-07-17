@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CuredHosting Suite — Server Guardian
  * Description: Security hardening and monitoring module for the CuredHosting Plugin Suite.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: CuredHosting
  */
 
@@ -16,7 +16,7 @@ add_action('plugins_loaded', function() {
         chps_register_module([
             'name' => 'Server Guardian',
             'slug' => 'server-guardian',
-            'version' => '1.0.1',
+            'version' => '1.0.2',
             'admin_slug' => 'wpsg-settings',
             'status' => 'active'
         ]);

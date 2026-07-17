@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CuredHosting Cookie Consent
  * Description: Lightweight cookie consent banner for WordPress sites with free, pro, and corporate tier support.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: CuredHosting
  */
 
@@ -14,7 +14,7 @@ if (function_exists('chps_register_module')) {
     chps_register_module([
         'name' => 'Cookie Consent',
         'slug' => 'cookie-consent',
-        'version' => '1.0.1',
+        'version' => '1.0.2',
         'admin_slug' => 'chps-cookie-consent',
         'status' => 'active'
     ]);
@@ -39,7 +39,7 @@ if (!class_exists('CH_Cookie_Consent')) {
         public function enqueue_frontend_assets() {
             wp_enqueue_style('chcc-style', false);
             wp_add_inline_style('chcc-style', $this->get_css());
-            wp_enqueue_script('chcc-script', plugin_dir_url(__FILE__) . 'assets/cookie-consent.js', [], '1.0.1', true);
+            wp_enqueue_script('chcc-script', plugin_dir_url(__FILE__) . 'assets/cookie-consent.js', [], '1.0.2', true);
             wp_localize_script('chcc-script', 'chccData', [
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'consentKey' => $this->option_prefix . 'consent',

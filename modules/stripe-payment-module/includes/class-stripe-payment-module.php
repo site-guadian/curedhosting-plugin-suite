@@ -35,9 +35,9 @@ class Stripe_Payment_Module {
 
     public function register_settings() {
         register_setting('spm_settings_group', $this->option_prefix . 'enabled');
-        register_setting('spm_settings_group', $this->option_prefix . 'secret_key');
+        register_setting('spm_settings_group', $this->option_prefix . 'secret_key', array($this, 'sanitize_secret_key'));
         register_setting('spm_settings_group', $this->option_prefix . 'publishable_key');
-        register_setting('spm_settings_group', $this->option_prefix . 'webhook_secret');
+        register_setting('spm_settings_group', $this->option_prefix . 'webhook_secret', array($this, 'sanitize_webhook_secret'));
         register_setting('spm_settings_group', $this->option_prefix . 'pro_price_id');
         register_setting('spm_settings_group', $this->option_prefix . 'corporate_price_id');
         register_setting('spm_settings_group', $this->option_prefix . 'success_url');
@@ -46,9 +46,11 @@ class Stripe_Payment_Module {
 
     public function render_settings_page() {
         $enabled = get_option($this->option_prefix . 'enabled', 0);
-        $secret_key = get_option($this->option_prefix . 'secret_key', '');
+        // Do not echo secrets back into the form; show empty fields and preserve on empty submit.
+        $secret_key = '';
         $publishable_key = get_option($this->option_prefix . 'publishable_key', '');
-        $webhook_secret = get_option($this->option_prefix . 'webhook_secret', '');
+        $webhook_secret = '';
+        $has_secret = !empty(get_option($this->option_prefix . 'secret_key', ''));
         $pro_price_id = get_option($this->option_prefix . 'pro_price_id', '');
         $corporate_price_id = get_option($this->option_prefix . 'corporate_price_id', '');
         $success_url = get_option($this->option_prefix . 'success_url', home_url('/'));
@@ -68,7 +70,12 @@ class Stripe_Payment_Module {
                     </tr>
                     <tr>
                         <th scope="row">Stripe Secret Key</th>
-                        <td><input type="password" name="spm_secret_key" value="<?php echo esc_attr($secret_key); ?>" class="regular-text" /></td>
+                        <td>
+                            <input type="password" name="spm_secret_key" value="" class="regular-text" placeholder="Leave empty to keep existing" />
+                            <?php if ($has_secret) : ?>
+                                <p class="description">A secret key is saved (hidden). Leave blank to keep.</p>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row">Stripe Publishable Key</th>
@@ -76,7 +83,12 @@ class Stripe_Payment_Module {
                     </tr>
                     <tr>
                         <th scope="row">Webhook Secret</th>
-                        <td><input type="password" name="spm_webhook_secret" value="<?php echo esc_attr($webhook_secret); ?>" class="regular-text" /></td>
+                        <td>
+                            <input type="password" name="spm_webhook_secret" value="" class="regular-text" placeholder="Leave empty to keep existing" />
+                            <?php if (!empty(get_option($this->option_prefix . 'webhook_secret', ''))) : ?>
+                                <p class="description">A webhook secret is saved (hidden). Leave blank to keep.</p>
+                            <?php endif; ?>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row">Pro Price ID</th>
@@ -179,12 +191,12 @@ class Stripe_Payment_Module {
         $webhook_secret = get_option($this->option_prefix . 'webhook_secret', '');
 
         if (empty($webhook_secret) || empty($signature)) {
-            chps_log_error('SPM webhook missing configuration or signature', array('webhook_secret' => empty($webhook_secret), 'signature_present' => !empty($signature)));
+            chps_log_error('SPM webhook missing configuration or signature', array('webhook_secret_present' => !empty($webhook_secret), 'signature_present' => !empty($signature)));
             return new WP_REST_Response(array('error' => 'Missing webhook configuration'), 400);
         }
 
         if (!$this->verify_signature($payload, $signature, $webhook_secret)) {
-            chps_log_error('SPM webhook signature verification failed', array('signature' => $signature, 'payload_snippet' => substr($payload, 0, 400)));
+            chps_log_error('SPM webhook signature verification failed', array('signature_present' => !empty($signature)));
             return new WP_REST_Response(array('error' => 'Invalid signature'), 401);
         }
 
@@ -227,8 +239,24 @@ class Stripe_Payment_Module {
         return hash_equals($expected, $signed);
     }
 
+    public function sanitize_secret_key($value) {
+        $val = sanitize_text_field(wp_unslash($value));
+        if (trim($val) === '') {
+            return get_option($this->option_prefix . 'secret_key', '');
+        }
+        return $val;
+    }
+
+    public function sanitize_webhook_secret($value) {
+        $val = sanitize_text_field(wp_unslash($value));
+        if (trim($val) === '') {
+            return get_option($this->option_prefix . 'webhook_secret', '');
+        }
+        return $val;
+    }
+
     private function create_checkout_session($tier, $price_id) {
-        $secret_key = get_option($this->option_prefix . 'secret_key', '');
+        $secret_key = defined('CHPS_STRIPE_SECRET_KEY') ? CHPS_STRIPE_SECRET_KEY : get_option($this->option_prefix . 'secret_key', '');
         $success_url = get_option($this->option_prefix . 'success_url', home_url('/'));
         $cancel_url = get_option($this->option_prefix . 'cancel_url', home_url('/'));
 
@@ -258,7 +286,7 @@ class Stripe_Payment_Module {
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
         if (empty($data['url'])) {
-            chps_log_error('SPM create_checkout_session: missing url in response', array('response_code' => wp_remote_retrieve_response_code($response), 'body' => substr($body, 0, 1000)));
+            chps_log_error('SPM create_checkout_session: missing url in response', array('response_code' => wp_remote_retrieve_response_code($response)));
             return false;
         }
 

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CuredHosting Plugin Suite Release Notes</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.5; color: #222; margin: 24px; }
+        header { margin-bottom: 32px; }
+        h1 { margin-bottom: 0; }
+        .version { color: #0073aa; }
+        .changelog { margin-top: 24px; }
+        .changelog h2 { margin-bottom: 8px; }
+        .changelog ul { margin-left: 18px; }
+        .footer { margin-top: 42px; color: #666; font-size: 0.95em; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>CuredHosting Plugin Suite</h1>
+        <p class="version">Release notes for version {{VERSION}}</p>
+    </header>
+    <section class="overview">
+        <h2>What’s new</h2>
+        <p>Each build includes the latest release notes, changelog history, and a summary of the changes since the previous version.</p>
+    </section>
+    <section class="security" style="border-left:4px solid #0073aa;padding:12px 16px;background:#f6fbfd;margin-top:18px;">
+        <h2>Security Improvements (Highlighted)</h2>
+        <ul>
+            <li><strong>Secrets no longer echoed</strong> — API and webhook secrets are never printed back into admin forms. Inputs are left empty and preserved when unchanged.</li>
+            <li><strong>Autoload disabled for secrets</strong> — known sensitive options are migrated to <code>autoload = 'no'</code> so secrets are not loaded on every request.</li>
+            <li><strong>Constant fallbacks</strong> — admins may define secrets in <code>wp-config.php</code> (e.g. <code>CHPS_STRIPE_SECRET_KEY</code>) to keep them out of the database.</li>
+            <li><strong>Logging minimized</strong> — webhook payloads, signatures, and full remote response bodies are no longer written to plugin logs to avoid accidental exposure.</li>
+            <li><strong>Safe UI & server guards</strong> — setup wizard includes a transient guard and confirmation notices; save handlers preserve existing secrets unless explicitly replaced.</li>
+            <li><strong>License enforcement</strong> — paid-tier restrictions are enforced before deep scans run, preventing unauthorized corporate scans.</li>
+        </ul>
+        <p style="margin:8px 0 0">These measures reduce risk for production deployments and shared hosting environments. See the upgrade guide for verification steps.</p>
+    </section>
+    <section class="changelog">
+        <h2>Release Notes</h2>
+        <div>{{RELEASE_NOTES}}</div>
+    </section>
+    <section class="history">
+        <h2>Changelog</h2>
+        <div>{{CHANGELOG_HTML}}</div>
+    </section>
+    <footer class="footer">
+        <p>Generated on {{DATE}}</p>
+    </footer>
+</body>
+</html>

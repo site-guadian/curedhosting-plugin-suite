@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Stripe Payment Module
  * Description: Lightweight Stripe Checkout module for selling Pro and Corporate access. Add your Stripe keys later and it will be ready.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: CuredHosting
  */
 
@@ -22,7 +22,7 @@ if (!class_exists('Stripe_Payment_Module')) {
             chps_register_module([
                 'name' => 'Stripe Payment',
                 'slug' => 'stripe-payment',
-                'version' => '1.0.1',
+                'version' => '1.0.2',
                 'admin_slug' => 'chps-spm-settings',
                 'status' => 'active'
             ]);

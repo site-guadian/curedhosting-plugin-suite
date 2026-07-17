@@ -18,6 +18,7 @@ class CHPS_Settings {
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_post_chps_toggle_module', array($this, 'handle_toggle_module'));
         add_action('admin_post_chps_clear_error_log', array($this, 'handle_clear_error_log'));
+        add_action('admin_post_chps_test_error_log', array($this, 'handle_test_error_log'));
         add_action('admin_menu', array($this, 'register_license_submenu'), 99);
         add_action('admin_menu', array($this, 'register_error_log_submenu'), 100);
         // License activation is handled by CHPS_License to avoid duplicate admin_post callbacks.
@@ -45,9 +46,17 @@ class CHPS_Settings {
     }
 
     public function register_settings() {
-        register_setting('chps_options_group', 'chps_license_key');
+        register_setting('chps_options_group', 'chps_license_key', array($this, 'sanitize_license_key'));
         register_setting('chps_options_group', 'chps_tier');
         register_setting('chps_options_group', 'chps_debug_enabled');
+    }
+
+    public function sanitize_license_key($value) {
+        $val = sanitize_text_field(wp_unslash($value));
+        if (trim($val) === '') {
+            return get_option('chps_license_key', '');
+        }
+        return $val;
     }
 
     public function render_page() {
@@ -211,7 +220,7 @@ class CHPS_Settings {
         foreach ($modules as $module) {
             $name = esc_html($module['name'] ?? 'Unnamed');
             $slug = esc_html($module['slug'] ?? 'unknown');
-            $version = esc_html($module['version'] ?? '1.0.1');
+            $version = esc_html($module['version'] ?? '1.0.2');
             $status = esc_html($this->get_module_status($module));
             $admin_slug = isset($module['admin_slug']) ? esc_attr($module['admin_slug']) : '';
             $admin_link = $admin_slug ? admin_url('admin.php?page=' . rawurlencode($admin_slug)) : '';
@@ -282,10 +291,15 @@ class CHPS_Settings {
             <?php if ($cleared) : ?>
                 <div class="notice notice-success"><p>Log cleared successfully.</p></div>
             <?php endif; ?>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-bottom:20px;">
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                 <?php wp_nonce_field('chps_clear_error_log'); ?>
                 <input type="hidden" name="action" value="chps_clear_error_log" />
                 <button type="submit" class="button button-secondary">Clear Log</button>
+            </form>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <?php wp_nonce_field('chps_test_error_log'); ?>
+                <input type="hidden" name="action" value="chps_test_error_log" />
+                <button type="submit" class="button button-primary">Write Test Log Entry</button>
                 <a href="<?php echo esc_url($log_url); ?>" class="button">Download Raw Log</a>
             </form>
             <table class="widefat fixed striped">
@@ -325,6 +339,18 @@ class CHPS_Settings {
         CHPS_Logger::instance()->clear_log();
 
         wp_safe_redirect(admin_url('admin.php?page=chps-error-log&cleared=1'));
+        exit;
+    }
+
+    public function handle_test_error_log() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        check_admin_referer('chps_test_error_log');
+        chps_log_error('Test error log entry from admin error log page', array('source' => 'admin-test-button'));
+
+        wp_safe_redirect(admin_url('admin.php?page=chps-error-log&test=1'));
         exit;
     }
 
