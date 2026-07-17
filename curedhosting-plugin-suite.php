@@ -33,9 +33,34 @@ add_action('chps_register_module', function ($module) {
         return;
     }
 
-    $modules = get_option(CHPS_MODULES, array());
-    $modules[] = $module;
-    update_option(CHPS_MODULES, array_values(array_unique($modules, SORT_REGULAR)));
+    // Normalize slug and ensure we don't register duplicates across versions.
+    $slug = isset($module['slug']) ? sanitize_key($module['slug']) : '';
+    $existing = get_option(CHPS_MODULES, array());
+
+    // Build map by slug so new registration replaces older entries with same slug.
+    $map = array();
+    foreach ($existing as $m) {
+        if (!is_array($m)) {
+            continue;
+        }
+        $s = isset($m['slug']) ? sanitize_key($m['slug']) : '';
+        if ($s === '') {
+            // keep entries without slug (unexpected) by giving them a unique key
+            $map[] = $m;
+            continue;
+        }
+        $map[$s] = $m;
+    }
+
+    if ($slug !== '') {
+        $map[$slug] = $module; // replace or set
+    } else {
+        // fallback: append if no slug provided
+        $map[] = $module;
+    }
+
+    // Save as numeric array
+    update_option(CHPS_MODULES, array_values($map));
 });
 
 require_once CHPS_PLUGIN_DIR . 'includes/class-chps-settings.php';
