@@ -50,6 +50,7 @@ if (!class_exists('WP_Server_Guardian')) {
             add_action('admin_post_wpsg_harden', [$this, 'apply_hardening']);
             add_action('admin_post_wpsg_reset_logs', [$this, 'reset_logs']);
             add_action('admin_post_wpsg_backup_prompt', [$this, 'handle_backup_prompt']);
+            add_action('admin_post_wpsg_save_settings', [$this, 'save_settings']);
             add_action('wpsg_uptime_check', [$this, 'perform_uptime_check']);
 
             if (!wp_next_scheduled('wpsg_daily_health_report')) {
@@ -78,7 +79,9 @@ if (!class_exists('WP_Server_Guardian')) {
             <div class="wrap">
                 <h1>🛡️ Server Guardian</h1>
                 <p>Monitor and harden your server security.</p>
-                <?php if (isset($_GET['hardened']) && $_GET['hardened'] === '1') : ?>
+                <?php if (isset($_GET['settings_saved']) && $_GET['settings_saved'] === '1') : ?>
+                    <div class="notice notice-success is-dismissible"><p>Server Guardian settings saved successfully.</p></div>
+                <?php elseif (isset($_GET['hardened']) && $_GET['hardened'] === '1') : ?>
                     <div class="notice notice-success is-dismissible"><p>Hardening rules applied successfully.</p></div>
                 <?php elseif (isset($_GET['wpsg_error'])) : ?>
                     <?php if ($_GET['wpsg_error'] === 'invalid_nonce') : ?>
@@ -121,8 +124,9 @@ if (!class_exists('WP_Server_Guardian')) {
                 
                 <div class="card" style="max-width:800px;padding:20px;margin:20px 0;">
                     <h2>Configuration</h2>
-                    <form method="post" action="options.php">
-                        <?php settings_fields('wpsg_settings_group'); ?>
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                        <input type="hidden" name="action" value="wpsg_save_settings" />
+                        <?php wp_nonce_field('wpsg_save_settings'); ?>
                         <table class="form-table">
                             <tr>
                                 <th><label for="wpsg_monitoring">Enable Monitoring:</label></th>
@@ -252,6 +256,25 @@ if (!class_exists('WP_Server_Guardian')) {
             delete_option($this->option_prefix . 'failed_logins');
             delete_option($this->option_prefix . 'last_report_sent');
             wp_safe_redirect(admin_url('admin.php?page=wpsg-settings&logs_reset=1'));
+            exit;
+        }
+
+        public function save_settings() {
+            if (!current_user_can('manage_options')) {
+                wp_die('Unauthorized');
+            }
+            check_admin_referer('wpsg_save_settings');
+
+            $monitoring_enabled = isset($_POST[$this->option_prefix . 'monitoring_enabled']) ? 'on' : 'off';
+            update_option($this->option_prefix . 'monitoring_enabled', $monitoring_enabled);
+
+            $hardening_level = sanitize_text_field($_POST[$this->option_prefix . 'hardening_level'] ?? 'moderate');
+            if (!in_array($hardening_level, ['light', 'moderate', 'strict'], true)) {
+                $hardening_level = 'moderate';
+            }
+            update_option($this->option_prefix . 'hardening_level', $hardening_level);
+
+            wp_safe_redirect(admin_url('admin.php?page=wpsg-settings&settings_saved=1'));
             exit;
         }
     }
