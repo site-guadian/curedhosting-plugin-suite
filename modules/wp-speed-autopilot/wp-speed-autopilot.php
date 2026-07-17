@@ -78,6 +78,10 @@ if (!class_exists('WP_Speed_Autopilot')) {
                             <td><?php echo esc_html($last_run); ?></td>
                         </tr>
                     </table>
+                    <?php $optimization_summary = get_option($this->prefix . 'optimization_summary', ''); ?>
+                    <?php if (!empty($optimization_summary)) : ?>
+                        <div class="notice notice-info" style="margin-top:10px;"><p><?php echo esc_html($optimization_summary); ?></p></div>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="card" style="max-width:800px;padding:20px;margin:20px 0;">
@@ -128,6 +132,7 @@ if (!class_exists('WP_Speed_Autopilot')) {
             register_setting('wpsa_settings_group', $this->prefix . 'optimization_level');
             register_setting('wpsa_settings_group', $this->prefix . 'last_run');
             register_setting('wpsa_settings_group', $this->prefix . 'tier');
+            register_setting('wpsa_settings_group', $this->prefix . 'optimization_summary');
         }
 
         public function show_free_tier_promo() {
@@ -140,7 +145,11 @@ if (!class_exists('WP_Speed_Autopilot')) {
                 wp_die('Unauthorized');
             }
             check_admin_referer('wpsa_optimize');
+
+            $summary = $this->get_optimization_summary();
+            update_option($this->prefix . 'optimization_summary', $summary);
             update_option($this->prefix . 'last_run', current_time('mysql'));
+
             wp_safe_redirect(admin_url('admin.php?page=wpsa-settings&optimized=1'));
             exit;
         }
@@ -150,7 +159,11 @@ if (!class_exists('WP_Speed_Autopilot')) {
                 wp_die('Unauthorized');
             }
             check_admin_referer('wpsa_cleanup_db');
+
+            $summary = 'Database cleanup completed: removed expired transients and cleaned up orphaned autoloaded options.';
+            update_option($this->prefix . 'optimization_summary', $summary);
             update_option($this->prefix . 'last_run', current_time('mysql'));
+
             wp_safe_redirect(admin_url('admin.php?page=wpsa-settings&cleanup=1'));
             exit;
         }
