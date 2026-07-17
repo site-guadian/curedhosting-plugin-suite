@@ -92,6 +92,7 @@ Set-Location 'd:\PREMIUM PLUGIN\curedhosting-plugin-suite'
 pwsh -NoProfile -ExecutionPolicy Bypass -File build.ps1
 ```
 
-The freemium zip excludes the following paths by default: `key-maker`, `modules/stripe-payment-module`.
-Premium modules that are part of the paid offering (for example `modules/wp-server-guardian` and `modules/wp-speed-autopilot`) are included inside the freemium archive under a `paid-modules/` folder so they are present but clearly separated from the free modules.
+The freemium zip includes the base free modules at top-level. Specifically, `modules/wp-server-guardian` and `modules/wp-speed-autopilot` are part of the free/freemium offering and will be present in the freemium archive's `modules/` folder.
+
+Paid modules are excluded from the freemium package by default. The freemium zip excludes the following paths: `key-maker`, `modules/stripe-payment-module`.
 

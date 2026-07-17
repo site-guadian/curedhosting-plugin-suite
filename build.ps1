@@ -41,18 +41,8 @@ Get-ChildItem -Path . -Force | Where-Object {
     else { Copy-Item -Path $_.FullName -Destination $dest -Force }
 }
 
-# Place premium modules inside a paid-modules folder within the freemium package
-$paidDir = Join-Path $temp 'paid-modules'
-New-Item -ItemType Directory -Path $paidDir | Out-Null
-
-$paidModules = @('modules\wp-server-guardian','modules\wp-speed-autopilot')
-foreach ($pm in $paidModules) {
-    if (Test-Path $pm) {
-        $name = Split-Path $pm -Leaf
-        $dest = Join-Path $paidDir $name
-        Copy-Item -Path $pm -Destination $dest -Recurse -Force
-    }
-}
+# Freemium includes core free modules such as wp-server-guardian and wp-speed-autopilot at top-level.
+# Paid modules (for example `key-maker` and `modules/stripe-payment-module`) remain excluded from the freemium package.
 
 if (Test-Path $freeZip) { Remove-Item $freeZip -Force }
 Compress-Archive -Path (Join-Path $temp '*') -DestinationPath $freeZip -Force
