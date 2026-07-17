@@ -179,10 +179,12 @@ class Stripe_Payment_Module {
         $webhook_secret = get_option($this->option_prefix . 'webhook_secret', '');
 
         if (empty($webhook_secret) || empty($signature)) {
+            chps_log_error('SPM webhook missing configuration or signature', array('webhook_secret' => empty($webhook_secret), 'signature_present' => !empty($signature)));
             return new WP_REST_Response(array('error' => 'Missing webhook configuration'), 400);
         }
 
         if (!$this->verify_signature($payload, $signature, $webhook_secret)) {
+            chps_log_error('SPM webhook signature verification failed', array('signature' => $signature, 'payload_snippet' => substr($payload, 0, 400)));
             return new WP_REST_Response(array('error' => 'Invalid signature'), 401);
         }
 
@@ -249,11 +251,17 @@ class Stripe_Payment_Module {
         ));
 
         if (is_wp_error($response)) {
+            chps_log_error('SPM create_checkout_session: wp_remote_post error', array('error' => $response->get_error_message()));
             return false;
         }
 
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
-        return !empty($data['url']) ? $data['url'] : false;
+        if (empty($data['url'])) {
+            chps_log_error('SPM create_checkout_session: missing url in response', array('response_code' => wp_remote_retrieve_response_code($response), 'body' => substr($body, 0, 1000)));
+            return false;
+        }
+
+        return $data['url'];
     }
 }

@@ -17,7 +17,9 @@ class CHPS_Settings {
         add_action('admin_menu', array($this, 'register_menu'), 1);  // Run VERY early so modules can register submenus
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_post_chps_toggle_module', array($this, 'handle_toggle_module'));
+        add_action('admin_post_chps_clear_error_log', array($this, 'handle_clear_error_log'));
         add_action('admin_menu', array($this, 'register_license_submenu'), 99);
+        add_action('admin_menu', array($this, 'register_error_log_submenu'), 100);
         // License activation is handled by CHPS_License to avoid duplicate admin_post callbacks.
     }
 
@@ -45,12 +47,14 @@ class CHPS_Settings {
     public function register_settings() {
         register_setting('chps_options_group', 'chps_license_key');
         register_setting('chps_options_group', 'chps_tier');
+        register_setting('chps_options_group', 'chps_debug_enabled');
     }
 
     public function render_page() {
         $license_key = get_option('chps_license_key', '');
         $tier = get_option('chps_tier', 'free');
         $license_status = get_option('chps_license_status', 'inactive');
+        $debug_enabled = get_option('chps_debug_enabled', 0);
         ?>
         <div class="wrap">
             <h1>CuredHosting Plugin Suite</h1>
@@ -78,6 +82,13 @@ class CHPS_Settings {
                         <td>
                             <strong><?php echo esc_html(ucfirst($license_status)); ?></strong>
                             <p class="description">Use the quick activation box below or issue a new key for a customer.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Debug Logging</th>
+                        <td>
+                            <label><input type="checkbox" name="chps_debug_enabled" value="1" <?php checked($debug_enabled, 1); ?> /> Enable plugin debug logging</label>
+                            <p class="description">When enabled, log entries will be written to <code>wp-content/uploads/chps-error.log</code>.</p>
                         </td>
                     </tr>
                 </table>
@@ -241,6 +252,79 @@ class CHPS_Settings {
             'chps-license-key',
             array($this, 'render_license_key_page')
         );
+    }
+
+    public function register_error_log_submenu() {
+        add_submenu_page(
+            'chps-settings',
+            'Error Log',
+            'Error Log',
+            'manage_options',
+            'chps-error-log',
+            array($this, 'render_error_log_page')
+        );
+    }
+
+    public function render_error_log_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        $logger = CHPS_Logger::instance();
+        $entries = $logger->get_recent_entries(100);
+        $log_url = $logger->get_log_file_url();
+        $cleared = isset($_GET['cleared']);
+        ?>
+        <div class="wrap">
+            <h1>CuredHosting Error Log</h1>
+            <p>Recent plugin log entries are shown below. The log file is stored at <code><?php echo esc_html($logger->get_log_file_path()); ?></code>.</p>
+            <?php if ($cleared) : ?>
+                <div class="notice notice-success"><p>Log cleared successfully.</p></div>
+            <?php endif; ?>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-bottom:20px;">
+                <?php wp_nonce_field('chps_clear_error_log'); ?>
+                <input type="hidden" name="action" value="chps_clear_error_log" />
+                <button type="submit" class="button button-secondary">Clear Log</button>
+                <a href="<?php echo esc_url($log_url); ?>" class="button">Download Raw Log</a>
+            </form>
+            <table class="widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Level</th>
+                        <th>Message</th>
+                        <th>Context</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($entries)) : ?>
+                        <tr><td colspan="4">No log entries found.</td></tr>
+                    <?php else : ?>
+                        <?php foreach ($entries as $entry) : ?>
+                            <tr>
+                                <td><?php echo esc_html($entry['timestamp'] ?? ''); ?></td>
+                                <td><?php echo esc_html(ucfirst($entry['level'] ?? '')); ?></td>
+                                <td><?php echo esc_html($entry['message'] ?? ''); ?></td>
+                                <td><pre style="margin:0; white-space:pre-wrap;"><?php echo esc_html(wp_json_encode($entry['context'] ?? array(), JSON_PRETTY_PRINT)); ?></pre></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php
+    }
+
+    public function handle_clear_error_log() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        check_admin_referer('chps_clear_error_log');
+        CHPS_Logger::instance()->clear_log();
+
+        wp_safe_redirect(admin_url('admin.php?page=chps-error-log&cleared=1'));
+        exit;
     }
 
     public function render_license_key_page() {

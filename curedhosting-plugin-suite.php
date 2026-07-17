@@ -41,6 +41,7 @@ add_action('chps_register_module', function ($module) {
 require_once CHPS_PLUGIN_DIR . 'includes/class-chps-settings.php';
 require_once CHPS_PLUGIN_DIR . 'includes/class-chps-license.php';
 require_once CHPS_PLUGIN_DIR . 'includes/class-chps-admin.php';
+require_once CHPS_PLUGIN_DIR . 'includes/class-chps-logger.php';
 require_once CHPS_PLUGIN_DIR . 'includes/class-chps-stripe.php';
 require_once CHPS_PLUGIN_DIR . 'includes/class-chps-setup-wizard.php';
 

@@ -361,17 +361,20 @@ class CHPS_License {
         ));
 
         if (is_wp_error($response)) {
+            chps_log_error('License remote validation request failed', array('endpoint' => $endpoint, 'error' => $response->get_error_message()));
             return array('valid' => false);
         }
 
         $code = wp_remote_retrieve_response_code($response);
         if ($code >= 400) {
+            chps_log_error('License remote validation returned HTTP error', array('endpoint' => $endpoint, 'code' => $code, 'body' => substr(wp_remote_retrieve_body($response), 0, 1000)));
             return array('valid' => false);
         }
 
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
         if (!is_array($data) || empty($data['valid'])) {
+            chps_log_error('License remote validation returned invalid payload', array('endpoint' => $endpoint, 'body' => substr($body, 0, 1000)));
             return array('valid' => false);
         }
 
