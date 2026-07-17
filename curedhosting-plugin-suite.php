@@ -83,3 +83,30 @@ add_action('plugins_loaded', function () {
     CHPS_Stripe::instance();
     CHPS_Setup_Wizard::instance();
 });
+
+// WP-CLI helper: check for duplicate module registrations
+if (defined('WP_CLI') && WP_CLI) {
+    WP_CLI::add_command('chps check-modules', function() {
+        $modules = chps_get_registered_modules();
+        if (empty($modules) || !is_array($modules)) {
+            WP_CLI::success('No modules registered.');
+            return;
+        }
+        $counts = [];
+        foreach ($modules as $m) {
+            if (!is_array($m)) continue;
+            $s = isset($m['slug']) ? sanitize_key($m['slug']) : '(no-slug)';
+            if (!isset($counts[$s])) $counts[$s] = 0;
+            $counts[$s]++;
+        }
+        $dupes = array_filter($counts, function($c){return $c>1;});
+        if (empty($dupes)) {
+            WP_CLI::success('No duplicate module registrations found.');
+            return;
+        }
+        WP_CLI::warning('Duplicate module registrations detected:');
+        foreach ($dupes as $slug => $c) {
+            WP_CLI::log(" - $slug: $c entries");
+        }
+    });
+}
