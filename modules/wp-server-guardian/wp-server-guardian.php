@@ -166,6 +166,8 @@ if (!class_exists('WP_Server_Guardian')) {
             register_setting('wpsg_settings_group', $this->option_prefix . 'tier');
             register_setting('wpsg_settings_group', $this->option_prefix . 'last_check');
             register_setting('wpsg_settings_group', $this->option_prefix . 'auto_harden');
+            register_setting('wpsg_settings_group', $this->option_prefix . 'monitoring_enabled');
+            register_setting('wpsg_settings_group', $this->option_prefix . 'hardening_level');
         }
 
         public function add_dashboard_widget() {
