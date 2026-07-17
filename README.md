@@ -70,3 +70,27 @@ curedhosting-plugin-suite/
     └── wp-speed-autopilot/
         └── wp-speed-autopilot.php
 ```
+
+## Suites
+
+- **Full suite**: contains the core plugin plus all modules, including `key-maker`, `modules/stripe-payment-module`, `modules/wp-server-guardian`, and `modules/wp-speed-autopilot`.
+- **Freemium suite**: a reduced package intended for public distribution — it excludes premium modules such as `key-maker`, `modules/stripe-payment-module`, `modules/wp-server-guardian`, and `modules/wp-speed-autopilot`.
+
+Use the freemium build to distribute a lightweight, free edition while keeping premium features in the full release.
+
+## Building release zips
+
+A PowerShell build script `build.ps1` is provided at the repository root to produce versioned release archives. The script reads the version from `curedhosting-plugin-suite.php` and creates two zip files named using the version:
+
+- `curedhosting-plugin-suite-full-<version>.zip`
+- `curedhosting-plugin-suite-freemium-<version>.zip`
+
+Run the build locally from the repository root:
+
+```powershell
+Set-Location 'd:\PREMIUM PLUGIN\curedhosting-plugin-suite'
+pwsh -NoProfile -ExecutionPolicy Bypass -File build.ps1
+```
+
+The freemium zip excludes the following paths by default: `key-maker`, `modules/stripe-payment-module`, `modules/wp-server-guardian`, `modules/wp-speed-autopilot`.
+

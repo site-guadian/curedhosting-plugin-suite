@@ -1,0 +1,35 @@
+name: Build and Release Suites
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run build script
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File build.ps1
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: chps-zips
+          path: |
+            curedhosting-plugin-suite-full-*.zip
+            curedhosting-plugin-suite-freemium-*.zip
+
+      - name: Create GitHub release and upload zips (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            curedhosting-plugin-suite-full-*.zip
+            curedhosting-plugin-suite-freemium-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
