@@ -23,8 +23,8 @@ Write-Output "Created $fullZip"
 $temp = Join-Path $env:TEMP ("chps_build_freemium_" + [guid]::NewGuid().Guid)
 New-Item -ItemType Directory -Path $temp | Out-Null
 
-# Excludes for freemium package
-$excludes = @('modules\stripe-payment-module','modules\wp-server-guardian','modules\wp-speed-autopilot','key-maker')
+# Excludes for freemium package (these are NOT distributed directly at top-level)
+$excludes = @('modules\stripe-payment-module','key-maker')
 
 Get-ChildItem -Path . -Force | Where-Object {
     $name = $_.FullName.Substring($root.Path.Length + 1)
@@ -39,6 +39,19 @@ Get-ChildItem -Path . -Force | Where-Object {
     $dest = Join-Path $temp $_.Name
     if ($_.PSIsContainer) { Copy-Item -Path $_.FullName -Destination $dest -Recurse -Force }
     else { Copy-Item -Path $_.FullName -Destination $dest -Force }
+}
+
+# Place premium modules inside a paid-modules folder within the freemium package
+$paidDir = Join-Path $temp 'paid-modules'
+New-Item -ItemType Directory -Path $paidDir | Out-Null
+
+$paidModules = @('modules\wp-server-guardian','modules\wp-speed-autopilot')
+foreach ($pm in $paidModules) {
+    if (Test-Path $pm) {
+        $name = Split-Path $pm -Leaf
+        $dest = Join-Path $paidDir $name
+        Copy-Item -Path $pm -Destination $dest -Recurse -Force
+    }
 }
 
 if (Test-Path $freeZip) { Remove-Item $freeZip -Force }
