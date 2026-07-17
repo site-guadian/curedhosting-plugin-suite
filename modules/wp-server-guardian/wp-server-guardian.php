@@ -78,6 +78,17 @@ if (!class_exists('WP_Server_Guardian')) {
             <div class="wrap">
                 <h1>🛡️ Server Guardian</h1>
                 <p>Monitor and harden your server security.</p>
+                <?php if (isset($_GET['hardened']) && $_GET['hardened'] === '1') : ?>
+                    <div class="notice notice-success is-dismissible"><p>Hardening rules applied successfully.</p></div>
+                <?php elseif (isset($_GET['wpsg_error'])) : ?>
+                    <?php if ($_GET['wpsg_error'] === 'invalid_nonce') : ?>
+                        <div class="notice notice-error is-dismissible"><p>Security verification failed. Please try again.</p></div>
+                    <?php elseif ($_GET['wpsg_error'] === 'unauthorized') : ?>
+                        <div class="notice notice-error is-dismissible"><p>Unauthorized action. Make sure you are logged in with sufficient privileges.</p></div>
+                    <?php else : ?>
+                        <div class="notice notice-error is-dismissible"><p>An unknown error occurred while applying hardening rules.</p></div>
+                    <?php endif; ?>
+                <?php endif; ?>
                 
                 <div class="card" style="max-width:800px;padding:20px;margin:20px 0;">
                     <h2>Security Status</h2>
@@ -206,21 +217,26 @@ if (!class_exists('WP_Server_Guardian')) {
         }
 
         public function apply_hardening($redirect = true) {
-            if ($redirect && !current_user_can('manage_options')) {
-                wp_die('Unauthorized');
+            if ($redirect) {
+                if (!current_user_can('manage_options')) {
+                    wp_safe_redirect(admin_url('admin.php?page=wpsg-settings&wpsg_error=unauthorized'));
+                    exit;
+                }
+
+                if (!isset($_REQUEST['_wpnonce']) || !wp_verify_nonce(wp_unslash($_REQUEST['_wpnonce']), 'wpsg_harden')) {
+                    wp_safe_redirect(admin_url('admin.php?page=wpsg-settings&wpsg_error=invalid_nonce'));
+                    exit;
+                }
             }
 
             // Minimal hardening actions: disable file editing and update timestamp.
             if (!defined('DISALLOW_FILE_EDIT')) {
-                if (!defined('DISALLOW_FILE_EDIT')) {
-                    define('DISALLOW_FILE_EDIT', true);
-                }
+                define('DISALLOW_FILE_EDIT', true);
             }
 
             update_option($this->option_prefix . 'last_hardened', current_time('mysql'));
 
             if ($redirect) {
-                check_admin_referer('wpsg_harden');
                 wp_safe_redirect(admin_url('admin.php?page=wpsg-settings&hardened=1'));
                 exit;
             }
