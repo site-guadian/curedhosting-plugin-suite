@@ -70,8 +70,12 @@ if (!class_exists('WP_Speed_Autopilot')) {
                     <h2>Status</h2>
                     <table class="form-table">
                         <tr>
-                            <th>Module Status:</th>
-                            <td><strong><?php echo $enabled === 'on' ? '✓ Active' : '○ Inactive'; ?></strong></td>
+                            <th>Optimizer State:</th>
+                            <td><strong><?php echo $enabled === 'on' ? 'Active' : 'Inactive'; ?></strong></td>
+                        </tr>
+                        <tr>
+                            <th>Optimization Level:</th>
+                            <td><strong><?php echo esc_html(ucfirst($optimization_level)); ?></strong></td>
                         </tr>
                         <tr>
                             <th>Last Optimization:</th>
